@@ -1,5 +1,7 @@
-var SimpleStorage = artifacts.require("./DCReum.sol");
+var DCRpublicEngine = artifacts.require("./DCRpublicEngine.sol");
 
 module.exports = function(deployer) {
-  deployer.deploy(SimpleStorage);
+
+  deployer.deploy(DCRpublicEngine);
 };
+

@@ -1,3 +1,22 @@
 {
-  "execLogs": []
+  "execLogs": [
+    {
+      "id": 0,
+      "task": "PrepareCommand",
+      "status": "executed",
+      "timestamp": "07/16/2020, 16:21:07"
+    },
+    {
+      "id": 1,
+      "task": "PrepareCommand",
+      "status": "executed",
+      "timestamp": "07/16/2020, 16:21:49"
+    },
+    {
+      "id": 2,
+      "task": "CallShipper",
+      "status": "BC semi internal - not implemented yet",
+      "timestamp": "07/16/2020, 16:24:00"
+    }
+  ]
 }
