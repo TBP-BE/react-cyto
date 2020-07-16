@@ -1,14 +1,15 @@
 import React from 'react';
 import Card from 'react-bootstrap/Card';
-
 import Cytoscape from "cytoscape";
 import CytoscapeComponent from 'react-cytoscapejs';
 import Header from './Header';
 import ExecLogger from './execLogger'
 import axios from 'axios';
-//import klay from 'cytoscape-klay';
 import COSEBilkent from "cytoscape-cose-bilkent";
+import DCReum from "../contracts/DCReum.json";
+import getWeb3 from "../getWeb3";
 // import dagre from 'cytoscape-dagre';
+//import klay from 'cytoscape-klay';
 Cytoscape.use(COSEBilkent);
 
 var node_style = require('../style/nodeStyle.json')
@@ -18,8 +19,7 @@ var dataChoreo = require('../projections/dataChoreo.json')
 var vectChoreo = require('../projections/vectChoreo.json')
 var execLogs = require('../projections/execChoreo.json')
 
-import DCReum from "../contracts/DCReum.json";
-import getWeb3 from "../getWeb3";
+
 
 
 class GraphModuleChoreography extends React.Component {
@@ -62,7 +62,7 @@ class GraphModuleChoreography extends React.Component {
   }
   
 
-   componentDidMount = async () => {
+    componentDidMount = async () => {
     try {  
       // Get network provider and web3 instance.
       const web3 = await getWeb3();
@@ -73,7 +73,9 @@ class GraphModuleChoreography extends React.Component {
       // Get the contract instance.
       const networkId = await web3.eth.net.getId();
       const deployedNetwork = DCReum.networks[networkId];
- 
+      console.log('haight')
+      console.log(deployedNetwork.address)
+
       const instance = new web3.eth.Contract(
         DCReum.abi,
         deployedNetwork && deployedNetwork.address,
@@ -83,15 +85,15 @@ class GraphModuleChoreography extends React.Component {
       // example of interacting with the contract's methods.
 
       this.setState({ web3, accounts, contract: instance }, this.runExample);
-      console.log(accounts);
-      console.log(instance);
+      console.log(accounts)
+      console.log(instance)
     } catch (error) {
       // Catch any errors for any of the above operations.
       alert(
         `Failed to load web3, accounts, or contract. Check console for details.`,
       );
       console.error(error);
-    };
+    }
 
     this.cy.fit();
     this.setUpListeners();
@@ -135,7 +137,7 @@ class GraphModuleChoreography extends React.Component {
 
     // Update state with the result.
     // this.setState({ storageValue: response });
-  };
+  }; 
 
    setUpListeners = () => {
     this.cy.on('click', 'node', (event) => {
