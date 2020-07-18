@@ -1,14 +1,14 @@
 import React from 'react';
 import Card from 'react-bootstrap/Card';
-
 import Cytoscape from "cytoscape";
 import CytoscapeComponent from 'react-cytoscapejs';
 import Header from './Header';
 import ExecLogger from './execLogger'
 import axios from 'axios';
-//import klay from 'cytoscape-klay';
 import COSEBilkent from "cytoscape-cose-bilkent";
-// import dagre from 'cytoscape-dagre';
+import DCRpublicEngine from "../contracts/DCRpublicEngine.json";
+import getWeb3 from "../getWeb3";
+
 Cytoscape.use(COSEBilkent);
 
 var node_style = require('../style/nodeStyle.json')
@@ -17,10 +17,6 @@ var cyto_style = require('../style/cytoStyle.json')
 var dataChoreo = require('../projections/dataChoreo.json')
 var vectChoreo = require('../projections/vectChoreo.json')
 var execLogs = require('../projections/execChoreo.json')
-
-import DCRpublicEngine from "../contracts/DCRpublicEngine.json";
-import getWeb3 from "../getWeb3";
-
 
 class GraphModuleChoreography extends React.Component {
 

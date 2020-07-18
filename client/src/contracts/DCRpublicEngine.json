@@ -524,7 +524,7 @@
   "source": "pragma solidity 0.5.16;\r\n\r\n// inspired from https://github.com/DCReum/dcreum.github.io/blob/dev/contracts/workflow.sol\r\n\r\ncontract DCRpublicEngine {\r\n  event LogWorkflowCreation (uint256 indexed workflowId, bytes32 indexed workflowName, address indexed creator);\r\n  event LogExecution (uint256 indexed workflowId, uint256 indexed activityId, address indexed executor);\r\n\r\n  struct Workflow {\r\n    bytes32 name;\r\n\r\n    //activity data:\r\n    bytes32[] activityNames;\r\n    uint256 included;\r\n    uint256 executed;\r\n    uint256 pending;\r\n\r\n    //relations\r\n    uint256[] includesTo;\r\n    uint256[] excludesTo;\r\n    uint256[] responsesTo;\r\n    uint256[] conditionsFrom;\r\n    uint256[] milestonesFrom;\r\n\r\n    //auth:\r\n    uint256 authDisabled;\r\n    address[] authAccounts;\r\n    uint256[] authWhitelist;\r\n  }\r\n\r\n  Workflow[] workflows;\r\n\r\n  function getWorkflowCount() public view returns (uint256) {\r\n    return workflows.length;\r\n  }\r\n\r\n  function getWorkflowName(uint256 workflowId) public view returns (bytes32) {\r\n    return workflows[workflowId].name;\r\n  }\r\n\r\n  function getActivityCount(uint256 workflowId) public view returns (uint256) {\r\n    return workflows[workflowId].activityNames.length;\r\n  }\r\n\r\n  function getActivityName(uint256 workflowId, uint256 activityId) public view returns (bytes32) {\r\n     return workflows[workflowId].activityNames[activityId];\r\n  }\r\n\r\n  function isIncluded(uint256 workflowId, uint256 activityId) public view returns (bool) {\r\n    return ((workflows[workflowId].included & (1<<activityId)) != 0);\r\n  }\r\n\r\n  function isExecuted(uint256 workflowId, uint256 activityId) public view returns (bool) {\r\n    return ((workflows[workflowId].executed & (1<<activityId)) != 0);\r\n  }\r\n\r\n  function isPending(uint256 workflowId, uint256 activityId) public view returns (bool) {\r\n    return ((workflows[workflowId].pending & (1<<activityId)) != 0);\r\n  }\r\n  \r\n  function getRelations(uint256 relations) private pure returns (uint8[] memory) {\r\n    uint i;\r\n    uint count = 0;\r\n    for (i = 0; i < 256; i++) {\r\n      if ((relations & (1<<i)) != 0)\r\n        count++;\r\n    }\r\n\r\n    uint j = 0;\r\n    uint8[] memory result = new uint8[](count);\r\n    for (i = 0; i < 256; i++) {\r\n      if ((relations & (1<<i)) != 0)\r\n        result[j++] = uint8(i);\r\n    }\r\n\r\n    return result;\r\n  }\r\n\r\n  function getIncludes (uint256 workflowId, uint256 activityId) external view returns (uint8[] memory) {\r\n    return getRelations(workflows[workflowId].includesTo[activityId]);\r\n  }\r\n\r\n  function getExcludes (uint256 workflowId, uint256 activityId) external view returns (uint8[] memory) {\r\n    return getRelations(workflows[workflowId].excludesTo[activityId]);\r\n  }\r\n\r\n  function getResponses (uint256 workflowId, uint256 activityId) external view returns (uint8[] memory) {\r\n    return getRelations(workflows[workflowId].responsesTo[activityId]);\r\n  }\r\n\r\n  function getConditions (uint256 workflowId, uint256 activityId) external view returns (uint8[] memory) {\r\n    return getRelations(workflows[workflowId].conditionsFrom[activityId]);\r\n  }\r\n\r\n  function getMilestones (uint256 workflowId, uint256 activityId) external view returns (uint8[] memory) {\r\n    return getRelations(workflows[workflowId].milestonesFrom[activityId]);\r\n  }\r\n\r\n  function getAccountWhitelist (uint256 workflowId, uint256 activityId) public view returns (address[] memory) {\r\n    Workflow storage workflow = workflows[workflowId];\r\n    uint i;\r\n    uint j;\r\n    uint count;\r\n\r\n    for (i = 0; i < workflow.authWhitelist.length; i++)\r\n      if ((workflow.authWhitelist[i] & (1<<activityId)) != 0)\r\n        count++;\r\n\r\n    j = 0;\r\n    address[] memory result = new address[](count);\r\n    for (i = 0; i < workflow.authWhitelist.length; i++)\r\n      if ((workflow.authWhitelist[i] & (1<<activityId)) != 0)\r\n        result[j++] = workflow.authAccounts[i];\r\n\r\n    return result;\r\n  }\r\n\r\n  function isAuthDisabled (uint256 workflowId, uint256 activityId) public view returns (bool) {\r\n    return ((workflows[workflowId].authDisabled & (1<<activityId)) == 0);\r\n  }\r\n\r\n  function canExecute (uint256 workflowId, uint256 activityId) public view returns (bool) {\r\n    Workflow storage workflow = workflows[workflowId];\r\n    uint32 i;\r\n\r\n    // sender address must have rights to execute or authorization must be disabled entirely\r\n    if ((workflow.authDisabled & (1<<activityId)) == 0) {\r\n      for (i = 0; i < workflow.authAccounts.length; i++)\r\n        if (workflow.authAccounts[i] == msg.sender && (workflow.authWhitelist[i] & (1<<activityId)) != 0)\r\n          break; // sender authorized\r\n\r\n      // sender not in authAccounts array or was not authorized by authWhitelist\r\n      if (i == workflow.authAccounts.length)\r\n        return false;\r\n    }\r\n    \r\n    // activity must be included\r\n    if ((workflow.included & (1<<activityId)) == 0) return false;\r\n\r\n    // all conditions executed\r\n    if(workflow.conditionsFrom[activityId] & (~workflow.executed & workflow.included) != 0) return false;\r\n\r\n    // no milestones pending\r\n    if(workflow.milestonesFrom[activityId] & (workflow.pending & workflow.included) != 0) return false;\r\n\r\n    return true;\r\n  }\r\n\r\n  function execute(uint256 workflowId, uint256 activityId) public {\r\n    Workflow storage workflow = workflows[workflowId];\r\n    \r\n    if (!canExecute(workflowId, activityId)) revert();\r\n\r\n    // executed activity\r\n    workflow.executed = workflow.executed | (1<<activityId);\r\n    workflow.pending = workflow.pending & ~(1<<activityId);\r\n\r\n    // exclude and include relations pass\r\n    // note includes happens after the exclude pass    \r\n    workflow.included = (workflow.included & ~workflow.excludesTo[activityId]) | workflow.includesTo[activityId];\r\n\r\n    // response relations pass\r\n    workflow.pending = (workflow.pending | workflow.responsesTo[activityId]);\r\n\r\n    emit LogExecution(workflowId, activityId, msg.sender);\r\n  }\r\n\r\n  function createWorkflow(\r\n    bytes32 workflowName,\r\n    bytes32[] memory activityNames,\r\n\r\n    // packed state variables\r\n    uint256 includedStates,\r\n    uint256 executedStates,\r\n    uint256 pendingStates,\r\n\r\n    // relations\r\n    uint256[] memory includesTo,\r\n    uint256[] memory excludesTo,\r\n    uint256[] memory responsesTo,\r\n    uint256[] memory conditionsFrom,\r\n    uint256[] memory milestonesFrom,\r\n\r\n    // auth\r\n    uint256 authDisabled,\r\n    address[] memory authAccounts,\r\n    uint256[] memory authWhitelist\r\n  ) public {\r\n    assert(activityNames.length <= 256);\r\n    assert(activityNames.length == includesTo.length);\r\n    assert(activityNames.length == excludesTo.length);\r\n    assert(activityNames.length == responsesTo.length);\r\n    assert(activityNames.length == conditionsFrom.length);\r\n    assert(activityNames.length == milestonesFrom.length);\r\n    assert(authAccounts.length == authWhitelist.length);\r\n\r\n    Workflow storage workflow = workflows[workflows.length++];\r\n    workflow.name = workflowName;\r\n\r\n    // activity data\r\n    workflow.activityNames = activityNames;\r\n    workflow.included = includedStates;\r\n    workflow.executed = executedStates;\r\n    workflow.pending = pendingStates;\r\n\r\n    // relations\r\n    workflow.includesTo = includesTo;\r\n    workflow.excludesTo = excludesTo;\r\n    workflow.responsesTo = responsesTo;\r\n    workflow.conditionsFrom = conditionsFrom;\r\n    workflow.milestonesFrom = milestonesFrom;\r\n\r\n    // auth\r\n    workflow.authDisabled = authDisabled;\r\n    workflow.authAccounts = authAccounts;\r\n    workflow.authWhitelist = authWhitelist;\r\n    \r\n    emit LogWorkflowCreation(workflows.length - 1, workflow.name, msg.sender);\r\n  }\r\n}\r\n",
   "sourcePath": "C:\\Users\\tipha\\source\\repos\\react-cyto\\contracts\\DCRpublicEngine.sol",
   "ast": {
-    "absolutePath": "/C/Users/tipha/source/repos/react-cyto/contracts/DCRpublicEngine.sol",
+    "absolutePath": "/C/Users/Lenovo/react_cyto/react-cyto-last/react-cyto/contracts/DCRpublicEngine.sol",
     "exportedSymbols": {
       "DCRpublicEngine": [
         899
@@ -8857,8 +8857,8 @@
                         "name": "revert",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [
-                          976,
-                          977
+                          956,
+                          957
                         ],
                         "referencedDeclaration": 976,
                         "src": "5311:6:0",
@@ -12210,7 +12210,7 @@
     "src": "0:7563:0"
   },
   "legacyAST": {
-    "absolutePath": "/C/Users/tipha/source/repos/react-cyto/contracts/DCRpublicEngine.sol",
+    "absolutePath": "/C/Users/Lenovo/react_cyto/react-cyto-last/react-cyto/contracts/DCRpublicEngine.sol",
     "exportedSymbols": {
       "DCRpublicEngine": [
         899
@@ -20543,8 +20543,8 @@
                         "name": "revert",
                         "nodeType": "Identifier",
                         "overloadedDeclarations": [
-                          976,
-                          977
+                          956,
+                          957
                         ],
                         "referencedDeclaration": 976,
                         "src": "5311:6:0",
@@ -23900,7 +23900,7 @@
     "version": "0.5.16+commit.9c3226ce.Emscripten.clang"
   },
   "networks": {
-    "1594315526765": {
+    "1594895295692": {
       "events": {
         "0xd853302052b9b346cf4b175b34d36663cb511da3c0c7f221f21ec256fc7f6251": {
           "anonymous": false,
@@ -23954,6 +23954,7 @@
         }
       },
       "links": {},
+<<<<<<< HEAD
       "address": "0x3F28EA8d9661E21EA27ee3aCdeb13536DD2914E7",
       "transactionHash": "0xbb6928d0d226fdb0d69fd8f6693b14562fa231839b3b978b06950485f1caff13"
     },
@@ -24184,6 +24185,10 @@
       "links": {},
       "address": "0x94A4D262B10bC2ecE954dB44950de334f8eE38CF",
       "transactionHash": "0xb7376f2a05926311bf59c822cd35a836a0ee48d04ceb2eafde567f30e682d0bb"
+=======
+      "address": "0x27e69fC3Bb96bD74C29aFbEC7a772A1bbfeD8EF2",
+      "transactionHash": "0x35958f54ce975d7b658ff9aa2ac3fcea7dda26371213c07028c4d4334fd3ef20"
+>>>>>>> 1a87e0eedde144c636a904edff24503d392093aa
     }
   },
   "schemaVersion": "3.2.1",
