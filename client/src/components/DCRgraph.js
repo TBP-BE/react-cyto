@@ -86,7 +86,7 @@ class DCRgraph extends React.Component {
       this.setState({DCRPublicId:activityNames.findIndex(isElem)});
 
       try {
-        web3.eth.handleRevert = true;
+        //web3.eth.handleRevert = true;
         console.log(this.state.DCRPublicId);
         const bcStatus = await contract.methods.execute(
           this.state.web3.utils.fromAscii("test"),  //workflowID
@@ -100,7 +100,7 @@ class DCRgraph extends React.Component {
         this.setState({bcRes:bcStatus})
 
         } catch (err) {
-              console.log("web3.eth.handleRevert =", web3.eth.handleRevert)
+             // console.log("web3.eth.handleRevert =", web3.eth.handleRevert)
               console.error(err);
               console.log("err.message =",err.message);
               this.setState({bcRes:'BC exec - rejected'})
